@@ -51,9 +51,7 @@ func main() {
 	http.HandleFunc("/", handleHome)
 	http.HandleFunc(wsPath, handleVLESSUpgrade)
 
-	log.Printf("Starting tiny-vless-ws server (zero-dependency)...")
-	log.Printf("Path: %s", wsPath)
-	log.Printf("Listening on port: %s", port)
+	log.Println("success")
 
 	if err := http.ListenAndServe(":"+port, nil); err != nil {
 		log.Fatalf("ListenAndServe error: %v", err)
@@ -103,7 +101,6 @@ func handleVLESSUpgrade(w http.ResponseWriter, r *http.Request) {
 
 	conn, bufrw, err := hijacker.Hijack()
 	if err != nil {
-		log.Printf("Hijack failed: %v", err)
 		return
 	}
 	defer conn.Close()
@@ -130,19 +127,16 @@ func handleVLESSUpgrade(w http.ResponseWriter, r *http.Request) {
 	// Read first message (VLESS header + initial payload)
 	firstMsg, err := ws.NextMessage()
 	if err != nil {
-		log.Printf("[WS] Failed to read first message: %v", err)
 		return
 	}
 
 	if len(firstMsg) < 18 {
-		log.Printf("[VLESS] Header too short")
 		return
 	}
 
 	// 1. Version (1B)
 	version := firstMsg[0]
 	if version != 0 {
-		log.Printf("[VLESS] Unsupported VLESS version: %d", version)
 		return
 	}
 
@@ -150,28 +144,24 @@ func handleVLESSUpgrade(w http.ResponseWriter, r *http.Request) {
 	var clientID [16]byte
 	copy(clientID[:], firstMsg[1:17])
 	if clientID != uuidBytes {
-		log.Printf("[VLESS] Authentication failed: received %s", hex.EncodeToString(clientID[:]))
 		return
 	}
 
 	// 3. Addon length (1B)
 	addonLen := int(firstMsg[17])
 	if len(firstMsg) < 18+addonLen {
-		log.Printf("[VLESS] Payload too short for addons")
 		return
 	}
 
 	// 4. Command (1B)
 	cmdIdx := 18 + addonLen
 	if len(firstMsg) <= cmdIdx {
-		log.Printf("[VLESS] Payload too short: no command")
 		return
 	}
 	command := firstMsg[cmdIdx]
 
 	// 5. Port (2B)
 	if len(firstMsg) < cmdIdx+3 {
-		log.Printf("[VLESS] Payload too short: no port")
 		return
 	}
 	port := binary.BigEndian.Uint16(firstMsg[cmdIdx+1 : cmdIdx+3])
@@ -179,7 +169,6 @@ func handleVLESSUpgrade(w http.ResponseWriter, r *http.Request) {
 	// 6. Address Type (1B)
 	addrTypeIdx := cmdIdx + 3
 	if len(firstMsg) <= addrTypeIdx {
-		log.Printf("[VLESS] Payload too short: no address type")
 		return
 	}
 	addrType := firstMsg[addrTypeIdx]
@@ -191,32 +180,27 @@ func handleVLESSUpgrade(w http.ResponseWriter, r *http.Request) {
 	switch addrType {
 	case 1: // IPv4 (4B)
 		if len(firstMsg) < addrTypeIdx+5 {
-			log.Printf("[VLESS] Payload too short for IPv4 address")
 			return
 		}
 		targetAddr = net.IP(firstMsg[addrTypeIdx+1 : addrTypeIdx+5]).String()
 		addrEnd = addrTypeIdx + 5
 	case 2: // Domain name (1B length + domain)
 		if len(firstMsg) < addrTypeIdx+2 {
-			log.Printf("[VLESS] Payload too short for Domain length")
 			return
 		}
 		domainLen := int(firstMsg[addrTypeIdx+1])
 		if len(firstMsg) < addrTypeIdx+2+domainLen {
-			log.Printf("[VLESS] Payload too short for Domain name")
 			return
 		}
 		targetAddr = string(firstMsg[addrTypeIdx+2 : addrTypeIdx+2+domainLen])
 		addrEnd = addrTypeIdx + 2 + domainLen
 	case 3: // IPv6 (16B)
 		if len(firstMsg) < addrTypeIdx+17 {
-			log.Printf("[VLESS] Payload too short for IPv6 address")
 			return
 		}
 		targetAddr = net.IP(firstMsg[addrTypeIdx+1 : addrTypeIdx+17]).String()
 		addrEnd = addrTypeIdx + 17
 	default:
-		log.Printf("[VLESS] Unknown address type: %d", addrType)
 		return
 	}
 
@@ -229,25 +213,20 @@ func handleVLESSUpgrade(w http.ResponseWriter, r *http.Request) {
 		handleTCP(wsStreamRd, wsStreamWr, targetAddr, port)
 	} else if command == 2 { // UDP
 		handleUDP(wsStreamRd, wsStreamWr, targetAddr, port)
-	} else {
-		log.Printf("[VLESS] Unsupported command: %d", command)
 	}
 }
 
 func handleTCP(wsReader io.Reader, wsWriter io.Writer, addr string, port uint16) {
 	dest := net.JoinHostPort(addr, strconv.Itoa(int(port)))
-	log.Printf("[TCP] Dialing to %s", dest)
 
 	targetConn, err := net.DialTimeout("tcp", dest, 10*time.Second)
 	if err != nil {
-		log.Printf("[TCP] Dial target failed: %v", err)
 		return
 	}
 	defer targetConn.Close()
 
 	// Send VLESS response: Version (0x00) + Addons length (0x00)
 	if _, err := wsWriter.Write([]byte{0, 0}); err != nil {
-		log.Printf("[TCP] Send response header failed: %v", err)
 		return
 	}
 
@@ -269,23 +248,19 @@ func handleTCP(wsReader io.Reader, wsWriter io.Writer, addr string, port uint16)
 	}()
 
 	wg.Wait()
-	log.Printf("[TCP] Connection to %s closed", dest)
 }
 
 func handleUDP(wsReader io.Reader, wsWriter io.Writer, addr string, port uint16) {
 	dest := net.JoinHostPort(addr, strconv.Itoa(int(port)))
-	log.Printf("[UDP] Dialing to %s", dest)
 
 	targetConn, err := net.Dial("udp", dest)
 	if err != nil {
-		log.Printf("[UDP] Dial target failed: %v", err)
 		return
 	}
 	defer targetConn.Close()
 
 	// Send VLESS response: Version (0x00) + Addons length (0x00)
 	if _, err := wsWriter.Write([]byte{0, 0}); err != nil {
-		log.Printf("[UDP] Send response header failed: %v", err)
 		return
 	}
 
@@ -344,7 +319,6 @@ func handleUDP(wsReader io.Reader, wsWriter io.Writer, addr string, port uint16)
 	}()
 
 	wg.Wait()
-	log.Printf("[UDP] Connection to %s closed", dest)
 }
 
 // wsConn is a custom WebSocket server reader/writer
