@@ -19,7 +19,7 @@ COPY --from=builder /app/tiny-vless .
 
 ENV PORT=8080
 ENV UUID=""
-ENV PATH="/vless"
+ENV WS_PATH="/assets/js/main.js"
 
 EXPOSE 8080
 

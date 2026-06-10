@@ -21,7 +21,7 @@ import (
 
 var (
 	uuidBytes [16]byte
-	wsPath    = "/vless"
+	wsPath    = "/assets/js/main.js"
 )
 
 func main() {
@@ -36,7 +36,7 @@ func main() {
 		log.Fatalf("Invalid UUID format: %v", err)
 	}
 
-	if envPath := os.Getenv("PATH"); envPath != "" {
+	if envPath := os.Getenv("WS_PATH"); envPath != "" {
 		wsPath = envPath
 		if !strings.HasPrefix(wsPath, "/") {
 			wsPath = "/" + wsPath

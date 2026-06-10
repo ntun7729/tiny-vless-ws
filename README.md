@@ -14,7 +14,7 @@ Compatible with **v2rayNG / Xray Core**.
 
 - `UUID` (Required): The authentication client UUID.
 - `PORT` (Optional): Port to listen on (default: `8080`).
-- `PATH` (Optional): WebSocket path to serve (default: `/vless`).
+- `WS_PATH` (Optional): WebSocket path to serve (default: `/assets/js/main.js`).
 
 ## Docker
 
@@ -25,7 +25,7 @@ docker run -d \
   --name tiny-vless-ws \
   -p 8080:8080 \
   -e UUID="YOUR-UUID-HERE" \
-  -e PATH="/vless" \
+  -e WS_PATH="/assets/js/main.js" \
   ghcr.io/ntun7729/tiny-vless-ws:latest
 ```
 
@@ -37,5 +37,5 @@ Use standard VLESS+WS settings:
 - **Port**: `80 / 443`
 - **UUID**: `<Your UUID>`
 - **Transport**: `ws` (WebSocket)
-- **Path**: `/vless`
+- **Path**: `/assets/js/main.js`
 - **TLS**: Specify if setup with reverse-proxy (e.g. Nginx or Cloudflare Tunnel)
