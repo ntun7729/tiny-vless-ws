@@ -1,0 +1,9 @@
+/tiny-vless
+/tiny-vless-static
+/tiny-vless-ws
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+.DS_Store
