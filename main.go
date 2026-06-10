@@ -357,8 +357,12 @@ type wsConn struct {
 }
 
 // NextMessage reads the next WebSocket message and returns the payload.
+// Rebuilds fragmented messages if necessary.
 // Filters out Ping, Pong, Close and text messages.
 func (ws *wsConn) NextMessage() ([]byte, error) {
+	var messageBuffer []byte
+	var currentOpcode byte = 0
+
 	for {
 		header, err := ws.bufrd.Peek(2)
 		if err != nil {
@@ -427,13 +431,26 @@ func (ws *wsConn) NextMessage() ([]byte, error) {
 			continue
 		}
 
-		// We only process binary messages (2)
+		// We only process binary messages (opcode 2) and continuation frames (opcode 0)
 		if opcode == 2 {
-			if !fin {
-				// Fragmented frame handling tag
-				return payload, nil
+			if len(messageBuffer) > 0 {
+				messageBuffer = nil
 			}
-			return payload, nil
+			currentOpcode = 2
+			messageBuffer = append(messageBuffer, payload...)
+			if fin {
+				return messageBuffer, nil
+			}
+		} else if opcode == 0 {
+			if currentOpcode == 2 {
+				messageBuffer = append(messageBuffer, payload...)
+				if fin {
+					ret := messageBuffer
+					messageBuffer = nil
+					currentOpcode = 0
+					return ret, nil
+				}
+			}
 		}
 	}
 }
