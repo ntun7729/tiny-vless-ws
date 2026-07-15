@@ -1,0 +1,10 @@
+.git
+.github
+.gitignore
+README.md
+coverage.out
+*.prof
+tiny-vless
+tiny-vless-static
+tiny-vless-ws
+*.exe
