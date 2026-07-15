@@ -1,26 +1,28 @@
-# Build stage
-FROM golang:1.26-alpine AS builder
+# syntax=docker/dockerfile:1.7
 
-WORKDIR /app
+FROM golang:1.25-alpine AS build
 
-COPY main.go ./
+WORKDIR /src
 COPY go.mod ./
+COPY main.go ./
+COPY server.go ./
+COPY vless.go ./
+COPY relay.go ./
+COPY websocket.go ./
 
-# Statically compile the Go binary with optimization and stripping
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o tiny-vless
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build \
+      -trimpath \
+      -ldflags="-s -w -buildid=" \
+      -o /out/tiny-vless-ws \
+      .
 
-# Final stage
-FROM alpine:latest
+FROM scratch
 
-RUN apk --no-cache add ca-certificates
+COPY --from=build /out/tiny-vless-ws /tiny-vless-ws
 
-WORKDIR /app
-COPY --from=builder /app/tiny-vless .
-
-ENV PORT=8080
-ENV UUID=""
-ENV WS_PATH="/assets/js/main.js"
-
+USER 65532:65532
 EXPOSE 8080
+STOPSIGNAL SIGTERM
 
-CMD ["./tiny-vless"]
+ENTRYPOINT ["/tiny-vless-ws"]
