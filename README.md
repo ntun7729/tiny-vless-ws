@@ -1,41 +1,75 @@
 # tiny-vless-ws
 
-A zero-dependency, ultra-lightweight VLESS over WebSocket server written in Go. Ideal for running on resource-constrained environments (e.g. 0.1 CPU + 256MB RAM). Compiles to a static ~5.5MB Go binary and uses <5MB RAM.
+[![CI](https://github.com/ntun7729/tiny-vless-ws/actions/workflows/ci.yml/badge.svg)](https://github.com/ntun7729/tiny-vless-ws/actions/workflows/ci.yml)
 
-Compatible with **v2rayNG / Xray Core**.
+A zero-dependency VLESS-over-WebSocket server written in Go for small, resource-constrained deployments.
+
+Compatible with **v2rayNG** and **Xray Core**.
 
 ## Features
 
-- **Standard Library Only**: No external Go dependencies (zero-dependency).
-- **Supports TCP & UDP**: Proxies both TCP streams and DNS/UDP traffic.
-- **Ultra-lightweight**: Multi-stage Dockerized alpine image uses minimal size, RAM, and CPU.
+- Uses only the Go standard library.
+- Proxies TCP streams and VLESS UDP packets.
+- Supports masked and fragmented WebSocket frames.
+- Builds as a static binary.
+- Ships in a minimal `scratch` container and runs as a non-root user.
+- Tests, vetting, native builds, and container builds run on pull requests.
 
-## Environment Variables
+## Configuration
 
-- `UUID` (Required): The authentication client UUID.
-- `PORT` (Optional): Port to listen on (default: `8080`).
-- `WS_PATH` (Optional): WebSocket path to serve (default: `/assets/js/main.js`).
+| Variable | Required | Default | Description |
+| --- | --- | --- | --- |
+| `UUID` | Yes | — | VLESS client UUID. Treat it as a secret. |
+| `PORT` | No | `8080` | HTTP port used by the WebSocket server. |
+| `WS_PATH` | No | `/assets/js/main.js` | WebSocket endpoint. A leading slash is added when omitted. |
 
-## Docker
-
-You can use the published GHCR container image:
+## Run with Docker
 
 ```bash
 docker run -d \
   --name tiny-vless-ws \
+  --restart unless-stopped \
+  --read-only \
+  --cap-drop=ALL \
+  --security-opt=no-new-privileges:true \
   -p 8080:8080 \
   -e UUID="YOUR-UUID-HERE" \
   -e WS_PATH="/assets/js/main.js" \
   ghcr.io/ntun7729/tiny-vless-ws:latest
 ```
 
-## Client Configuration (v2rayNG / Xray)
+The container does not require a writable filesystem or Linux capabilities. It listens on an unprivileged port and runs as UID/GID `65532`.
 
-Use standard VLESS+WS settings:
-- **Protocol**: `VLESS`
-- **Address**: `your-server.com`
-- **Port**: `80 / 443`
-- **UUID**: `<Your UUID>`
-- **Transport**: `ws` (WebSocket)
-- **Path**: `/assets/js/main.js`
-- **TLS**: Specify if setup with reverse-proxy (e.g. Nginx or Cloudflare Tunnel)
+## Build and test locally
+
+Go 1.25 or newer is required.
+
+```bash
+go test ./...
+go vet ./...
+go build -trimpath -buildvcs=false -ldflags="-s -w" -o tiny-vless .
+```
+
+Build the container locally:
+
+```bash
+docker build -t tiny-vless-ws:local .
+```
+
+## Client configuration
+
+Use standard VLESS + WebSocket settings:
+
+| Setting | Value |
+| --- | --- |
+| Protocol | `VLESS` |
+| Address | Your server hostname |
+| Port | `80` or `443` when using a reverse proxy |
+| UUID | The same value supplied through `UUID` |
+| Transport | `ws` |
+| Path | The configured `WS_PATH` |
+| TLS | Enable when TLS is terminated by a reverse proxy or tunnel |
+
+## Deployment notes
+
+This server does not terminate TLS. Put it behind a maintained TLS reverse proxy or tunnel for internet-facing deployments. Keep the UUID private, expose only the intended listener, and update the container image regularly.
