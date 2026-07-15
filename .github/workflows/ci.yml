@@ -26,29 +26,10 @@ jobs:
           go-version-file: go.mod
           cache: false
 
-      - name: Generate formatting patch
-        id: format
-        shell: bash
+      - name: Check formatting
         run: |
           gofmt -w .
-          git diff > gofmt.patch
-          if [[ -s gofmt.patch ]]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Upload formatting patch
-        if: steps.format.outputs.changed == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: gofmt-patch
-          path: gofmt.patch
-          if-no-files-found: error
-
-      - name: Check formatting
-        if: steps.format.outputs.changed == 'true'
-        run: |
-          cat gofmt.patch
-          exit 1
+          git diff --exit-code
 
       - name: Vet
         run: go vet ./...

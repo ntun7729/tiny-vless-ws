@@ -35,7 +35,7 @@ type wsConn struct {
 
 type wsFrame struct {
 	fin     bool
-	opcode byte
+	opcode  byte
 	payload []byte
 }
 
