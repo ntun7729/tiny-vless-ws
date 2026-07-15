@@ -7,6 +7,8 @@ import (
 	"net"
 )
 
+const tcpRelayBufferSize = 32 * 1024
+
 func (s *proxyServer) handleTCP(ws *wsConn, request vlessRequest) {
 	target, err := s.dialer.Dial("tcp", destination(request.address, request.port))
 	if err != nil {
@@ -22,8 +24,21 @@ func (s *proxyServer) handleTCP(ws *wsConn, request vlessRequest) {
 	writer := &wsStreamWriter{ws: ws}
 	relayBidirectional(ws.conn, target,
 		func() { _, _ = io.Copy(target, reader) },
-		func() { _, _ = io.Copy(writer, target) },
+		func() { _, _ = copyTCPToWebSocket(writer, target, ws.maxMessageBytes) },
 	)
+}
+
+func copyTCPToWebSocket(writer io.Writer, target io.Reader, maxMessageBytes int64) (int64, error) {
+	if maxMessageBytes <= 0 {
+		return 0, errMessageTooBig
+	}
+
+	bufferSize := tcpRelayBufferSize
+	if int64(bufferSize) > maxMessageBytes {
+		bufferSize = int(maxMessageBytes)
+	}
+
+	return io.CopyBuffer(writer, target, make([]byte, bufferSize))
 }
 
 func (s *proxyServer) handleUDP(ws *wsConn, request vlessRequest) {
