@@ -1,0 +1,9 @@
+.git
+.github
+.gitignore
+*.md
+*_test.go
+tiny-vless
+tiny-vless-static
+tiny-vless-ws
+coverage.out
