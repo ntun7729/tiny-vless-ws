@@ -6,4 +6,7 @@
 *.dll
 *.so
 *.dylib
+*.test
+*.prof
+coverage.out
 .DS_Store
