@@ -159,8 +159,7 @@ func (s *proxyServer) handleVLESSUpgrade(w http.ResponseWriter, r *http.Request)
 }
 
 func isWebSocketUpgradeAttempt(r *http.Request) bool {
-	return headerHasToken(r.Header, "Connection", "upgrade") ||
-		strings.EqualFold(strings.TrimSpace(r.Header.Get("Upgrade")), "websocket")
+	return strings.EqualFold(strings.TrimSpace(r.Header.Get("Upgrade")), "websocket")
 }
 
 func validateWebSocketRequest(r *http.Request) (string, error) {
