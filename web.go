@@ -3,6 +3,7 @@ package main
 import (
 	"io"
 	"net/http"
+	"strconv"
 )
 
 const indexHTML = `<!doctype html>
@@ -54,6 +55,7 @@ func serveStatic(w http.ResponseWriter, r *http.Request, contentType, body strin
 	}
 
 	w.Header().Set("Content-Type", contentType)
+	w.Header().Set("Content-Length", strconv.Itoa(len(body)))
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; frame-ancestors 'none'")
 	w.Header().Set("Referrer-Policy", "no-referrer")
