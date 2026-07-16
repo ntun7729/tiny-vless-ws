@@ -66,7 +66,14 @@ func (s *proxyServer) closeConnections() {
 }
 
 func (s *proxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Path == s.wsPath && isWebSocketUpgradeAttempt(r) {
+		s.handleVLESSUpgrade(w, r)
+		return
+	}
+
 	switch r.URL.Path {
+	case "/":
+		serveIndex(w, r)
 	case "/healthz":
 		if r.Method != http.MethodGet && r.Method != http.MethodHead {
 			w.Header().Set("Allow", "GET, HEAD")
@@ -79,6 +86,8 @@ func (s *proxyServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodHead {
 			_, _ = io.WriteString(w, "ok\n")
 		}
+	case "/assets/js/main.js":
+		serveMainJavaScript(w, r)
 	case s.wsPath:
 		s.handleVLESSUpgrade(w, r)
 	default:
@@ -147,6 +156,11 @@ func (s *proxyServer) handleVLESSUpgrade(w http.ResponseWriter, r *http.Request)
 	case commandUDP:
 		s.handleUDP(ws, request)
 	}
+}
+
+func isWebSocketUpgradeAttempt(r *http.Request) bool {
+	return headerHasToken(r.Header, "Connection", "upgrade") ||
+		strings.EqualFold(strings.TrimSpace(r.Header.Get("Upgrade")), "websocket")
 }
 
 func validateWebSocketRequest(r *http.Request) (string, error) {
