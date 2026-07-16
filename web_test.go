@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -24,6 +25,9 @@ func TestWebEndpoints(t *testing.T) {
 		}
 		if contentType := response.Header().Get("Content-Type"); !strings.HasPrefix(contentType, "text/html") {
 			t.Fatalf("Content-Type = %q, want HTML", contentType)
+		}
+		if contentLength := response.Header().Get("Content-Length"); contentLength != strconv.Itoa(len(indexHTML)) {
+			t.Fatalf("Content-Length = %q, want %d", contentLength, len(indexHTML))
 		}
 		if !strings.Contains(response.Body.String(), `src="/assets/js/main.js"`) {
 			t.Fatal("index does not reference the JavaScript asset")
@@ -70,6 +74,9 @@ func TestWebEndpoints(t *testing.T) {
 
 		if response.Code != http.StatusOK {
 			t.Fatalf("status = %d, want %d", response.Code, http.StatusOK)
+		}
+		if contentLength := response.Header().Get("Content-Length"); contentLength != strconv.Itoa(len(indexHTML)) {
+			t.Fatalf("Content-Length = %q, want %d", contentLength, len(indexHTML))
 		}
 		if response.Body.Len() != 0 {
 			t.Fatalf("HEAD body length = %d, want 0", response.Body.Len())
