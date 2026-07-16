@@ -47,6 +47,21 @@ func TestWebEndpoints(t *testing.T) {
 		}
 	})
 
+	t.Run("javascript behind upgrade proxy", func(t *testing.T) {
+		request := httptest.NewRequest(http.MethodGet, "http://example.test/assets/js/main.js", nil)
+		request.Header.Set("Connection", "upgrade")
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+
+		if response.Code != http.StatusOK {
+			t.Fatalf("status = %d, want %d", response.Code, http.StatusOK)
+		}
+		if !strings.Contains(response.Body.String(), `fetch("/healthz"`) {
+			t.Fatal("proxied request did not receive JavaScript")
+		}
+	})
+
 	t.Run("head", func(t *testing.T) {
 		request := httptest.NewRequest(http.MethodHead, "http://example.test/", nil)
 		response := httptest.NewRecorder()
