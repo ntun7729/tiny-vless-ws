@@ -11,6 +11,7 @@ A small, zero-external-dependency VLESS-over-WebSocket server written in Go. It 
 - Strict WebSocket handshake and frame validation
 - Bounded WebSocket message allocation to reduce denial-of-service risk
 - Graceful shutdown and startup/configuration validation
+- Tiny embedded landing page at `/`
 - `/healthz` liveness endpoint
 - Minimal scratch-based container running as a non-root user
 - Unit tests, race detection, vetting, formatting checks, and container CI
@@ -21,7 +22,7 @@ A small, zero-external-dependency VLESS-over-WebSocket server written in Go. It 
 |---|---:|---|---|
 | `UUID` | Yes | — | VLESS client UUID. The all-zero UUID is rejected. |
 | `PORT` | No | `8080` | Listening port, from `1` to `65535`. |
-| `WS_PATH` | No | `/assets/js/main.js` | Exact WebSocket endpoint path. |
+| `WS_PATH` | No | `/assets/js/main.js` | Exact WebSocket endpoint path. Normal HTTP requests to the default path receive the landing-page JavaScript. |
 | `MAX_WS_MESSAGE_BYTES` | No | `4194304` | Maximum accepted WebSocket frame/message size. Allowed range: 1 KiB to 64 MiB. |
 
 ## Run with Docker
@@ -41,6 +42,13 @@ Check liveness:
 curl --fail http://127.0.0.1:8080/healthz
 ```
 
+## Web endpoints
+
+- `/` serves a tiny status page.
+- `/assets/js/main.js` serves its JavaScript during a normal `GET` or `HEAD` request.
+- A WebSocket upgrade on the configured `WS_PATH` is routed to VLESS instead of static content.
+- `/healthz` returns `ok` for liveness checks.
+
 ## Client settings
 
 Use standard VLESS-over-WebSocket settings:
@@ -58,6 +66,16 @@ The proxy must preserve WebSocket upgrade headers and route the configured path 
 ### Nginx routing example
 
 ```nginx
+location = / {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_set_header Host $host;
+}
+
+location = /healthz {
+    proxy_pass http://127.0.0.1:8080;
+    proxy_set_header Host $host;
+}
+
 location = /assets/js/main.js {
     proxy_pass http://127.0.0.1:8080;
     proxy_http_version 1.1;
